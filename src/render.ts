@@ -490,4 +490,89 @@ export class ImageRenderer {
         }
     }
 
+    /**
+     * Creates OBJ file from CIF data
+     * @param modIndex index of model in CIF data
+     * @param asmIndex index of assembly in current model
+     * @param models list of models from CIF data
+     * @param outPath output path of image
+     * @param id PDB ID
+     */
+    async createOBJ(modIndex: number, asmIndex: number, models: readonly Model[], outPath: string, id: string) {
+        return new Promise<void>(async resolve => {
+            const asmName = models[modIndex].symmetry.assemblies[asmIndex].id
+            console.log(`Rendering ${id} model ${models[modIndex].modelNum} assembly ${asmName}...`)
+
+            // Get model structure and assembly structure
+            let structure = await this.getStructure(models[modIndex])
+
+            let origStructure = await this.getStructure(models[modIndex])
+            const task = StructureSymmetry.buildAssembly(origStructure, models[modIndex].symmetry.assemblies[asmIndex].id)
+            const wholeStructure = await task.run()
+
+            // Add carbs to canvas
+            const carbRepr = CarbohydrateRepresentationProvider.factory(this.reprCtx, CarbohydrateRepresentationProvider.getParams)
+
+            carbRepr.setTheme({
+                color: this.reprCtx.colorThemeRegistry.create('carbohydrate-symbol', { structure: wholeStructure }),
+                size: this.reprCtx.sizeThemeRegistry.create('uniform', { structure: wholeStructure })
+            })
+            await carbRepr.createOrUpdate({ ...CarbohydrateRepresentationProvider.defaultValues, quality: 'auto' }, wholeStructure).run()
+            this.canvas3d.add(carbRepr)
+
+            // Add model to canvas
+            let provider: RepresentationProvider<any, any, any>
+
+            if (wholeStructure.polymerUnitCount > this.unitThreshold) {
+                provider = MolecularSurfaceRepresentationProvider
+            } else {
+                provider = CartoonRepresentationProvider
+            }
+            const repr = provider.factory(this.reprCtx, provider.getParams)
+
+            if (wholeStructure.polymerUnitCount === 1) {
+                repr.setTheme({
+                    color: this.reprCtx.colorThemeRegistry.create('sequence-id', { structure: wholeStructure }),
+                    size: this.reprCtx.sizeThemeRegistry.create('uniform', { structure: wholeStructure })
+                })
+            } else {
+                repr.setTheme({
+                    color: this.reprCtx.colorThemeRegistry.create('polymer-id', { structure: wholeStructure }),
+                    size: this.reprCtx.sizeThemeRegistry.create('uniform', { structure: wholeStructure })
+                })
+            }
+            await repr.createOrUpdate({ ... provider.defaultValues, quality: 'auto' }, wholeStructure).run()
+
+            this.canvas3d.add(repr)
+
+            // Query and add ligands to canvas
+            const expression = MS.struct.modifier.union([
+                MS.struct.combinator.merge([ Q.ligandPlusConnected.expression, Q.branchedConnectedOnly.expression ])
+            ])
+            const query = compile<StructureSelection>(expression)
+            const selection = query(new QueryContext(wholeStructure))
+            structure = StructureSelection.unionStructure(selection)
+
+            const ligandRepr = BallAndStickRepresentationProvider.factory(this.reprCtx, BallAndStickRepresentationProvider.getParams)
+            repr.setTheme({
+                color: this.reprCtx.colorThemeRegistry.create('element-symbol', { structure }),
+                size: this.reprCtx.sizeThemeRegistry.create('uniform', { structure })
+            })
+            await ligandRepr.createOrUpdate({ ...BallAndStickRepresentationProvider.defaultValues, quality: 'auto' }, structure).run()
+            this.canvas3d.add(ligandRepr)
+
+            this.canvas3d.resetCamera()
+
+            // Write png to file
+            let imagePathName = `${outPath}/${id}_model-${models[modIndex].modelNum}-assembly-${asmName}.png`
+            await this.createImage(imagePathName)
+
+            // Finished writing to file and clear canvas
+            console.log('Finished.')
+            this.canvas3d.remove(ligandRepr)
+            this.canvas3d.clear()
+            resolve()
+        })
+    }
+
 }
