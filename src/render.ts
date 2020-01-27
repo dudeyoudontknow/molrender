@@ -8,6 +8,7 @@
 import * as util from 'util'
 import createContext = require('gl')
 import fs = require('fs')
+import { promises } from 'fs'
 import { PNG, PNGOptions } from 'pngjs'
 import { Canvas3D, Canvas3DParams } from 'molstar/lib/mol-canvas3d/canvas3d';
 import InputObserver from 'molstar/lib/mol-util/input/input-observer';
@@ -204,6 +205,82 @@ export class ImageRenderer {
      * @param outPath output path of image
      * @param id PDB ID
      */
+    // async renderAsm(modIndex: number, asmIndex: number, models: readonly Model[], outPath: string, id: string) {
+    //     return new Promise<void>(async resolve => {
+    //         const asmName = models[modIndex].symmetry.assemblies[asmIndex].id
+    //         console.log(`Rendering ${id} model ${models[modIndex].modelNum} assembly ${asmName}...`)
+
+    //         // Get model structure and assembly structure
+    //         let structure = await this.getStructure(models[modIndex])
+
+    //         let origStructure = await this.getStructure(models[modIndex])
+    //         const task = StructureSymmetry.buildAssembly(origStructure, models[modIndex].symmetry.assemblies[asmIndex].id)
+    //         const wholeStructure = await task.run()
+
+    //         // Add carbs to canvas
+    //         const carbRepr = CarbohydrateRepresentationProvider.factory(this.reprCtx, CarbohydrateRepresentationProvider.getParams)
+
+    //         carbRepr.setTheme({
+    //             color: this.reprCtx.colorThemeRegistry.create('carbohydrate-symbol', { structure: wholeStructure }),
+    //             size: this.reprCtx.sizeThemeRegistry.create('uniform', { structure: wholeStructure })
+    //         })
+    //         await carbRepr.createOrUpdate({ ...CarbohydrateRepresentationProvider.defaultValues, quality: 'auto' }, wholeStructure).run()
+    //         this.canvas3d.add(carbRepr)
+
+    //         // Add model to canvas
+    //         let provider: RepresentationProvider<any, any, any>
+
+    //         if (wholeStructure.polymerUnitCount > this.unitThreshold) {
+    //             provider = MolecularSurfaceRepresentationProvider
+    //         } else {
+    //             provider = CartoonRepresentationProvider
+    //         }
+    //         const repr = provider.factory(this.reprCtx, provider.getParams)
+
+    //         if (wholeStructure.polymerUnitCount === 1) {
+    //             repr.setTheme({
+    //                 color: this.reprCtx.colorThemeRegistry.create('sequence-id', { structure: wholeStructure }),
+    //                 size: this.reprCtx.sizeThemeRegistry.create('uniform', { structure: wholeStructure })
+    //             })
+    //         } else {
+    //             repr.setTheme({
+    //                 color: this.reprCtx.colorThemeRegistry.create('polymer-id', { structure: wholeStructure }),
+    //                 size: this.reprCtx.sizeThemeRegistry.create('uniform', { structure: wholeStructure })
+    //             })
+    //         }
+    //         await repr.createOrUpdate({ ... provider.defaultValues, quality: 'auto' }, wholeStructure).run()
+
+    //         this.canvas3d.add(repr)
+
+    //         // Query and add ligands to canvas
+    //         const expression = MS.struct.modifier.union([
+    //             MS.struct.combinator.merge([ Q.ligandPlusConnected.expression, Q.branchedConnectedOnly.expression ])
+    //         ])
+    //         const query = compile<StructureSelection>(expression)
+    //         const selection = query(new QueryContext(wholeStructure))
+    //         structure = StructureSelection.unionStructure(selection)
+
+    //         const ligandRepr = BallAndStickRepresentationProvider.factory(this.reprCtx, BallAndStickRepresentationProvider.getParams)
+    //         repr.setTheme({
+    //             color: this.reprCtx.colorThemeRegistry.create('element-symbol', { structure }),
+    //             size: this.reprCtx.sizeThemeRegistry.create('uniform', { structure })
+    //         })
+    //         await ligandRepr.createOrUpdate({ ...BallAndStickRepresentationProvider.defaultValues, quality: 'auto' }, structure).run()
+    //         this.canvas3d.add(ligandRepr)
+
+    //         this.canvas3d.resetCamera()
+
+    //         // Write png to file
+    //         let imagePathName = `${outPath}/${id}_model-${models[modIndex].modelNum}-assembly-${asmName}.png`
+    //         await this.createImage(imagePathName)
+
+    //         // Finished writing to file and clear canvas
+    //         console.log('Finished.')
+    //         this.canvas3d.remove(ligandRepr)
+    //         this.canvas3d.clear()
+    //         resolve()
+    //     })
+    // }
     async renderAsm(modIndex: number, asmIndex: number, models: readonly Model[], outPath: string, id: string) {
         return new Promise<void>(async resolve => {
             const asmName = models[modIndex].symmetry.assemblies[asmIndex].id
@@ -224,7 +301,52 @@ export class ImageRenderer {
                 size: this.reprCtx.sizeThemeRegistry.create('uniform', { structure: wholeStructure })
             })
             await carbRepr.createOrUpdate({ ...CarbohydrateRepresentationProvider.defaultValues, quality: 'auto' }, wholeStructure).run()
-            this.canvas3d.add(carbRepr)
+
+            let buffer = `# PDB ID Structure ${id}\n`
+
+            fs.writeFileSync('objtest.obj', buffer)
+
+            let objList = carbRepr.renderObjects
+            console.log(objList.length);
+            for (let i = 0; i < objList.length; i++) {
+                const currObj = objList[i]
+                console.log(currObj.type);
+                if (currObj.type === 'mesh') {
+
+                    buffer += 'o carbohydrates\n'
+
+                    fs.appendFileSync('objtest.obj', buffer)
+
+
+                    console.log('huh?');
+
+                    const vertices = currObj.values.aPosition.ref.value
+                    for (let i = 2; i < vertices.length; i += 3) {
+
+                        buffer = `v ${vertices[i - 2]} ${vertices[i - 1]} ${vertices[i]}\n`
+
+                        fs.appendFileSync('objtest.obj', buffer)
+                    }
+
+                    const norms = currObj.values.aNormal.ref.value
+                    for (let i = 2; i < norms.length; i += 3) {
+
+                        buffer = `vn ${norms[i - 2]} ${norms[i - 1]} ${norms[i]}\n`
+
+                        fs.appendFileSync('objtest.obj', buffer)
+
+                    }
+
+                    const faces = currObj.values.elements.ref.value
+                    for (let i = 2; i < faces.length; i += 3) {
+
+                        buffer = `f ${faces[i - 2]} ${faces[i - 1]} ${faces[i]}\n`
+
+                        fs.appendFileSync('objtest.obj', buffer)
+
+                    }
+                }
+            }
 
             // Add model to canvas
             let provider: RepresentationProvider<any, any, any>
@@ -249,7 +371,50 @@ export class ImageRenderer {
             }
             await repr.createOrUpdate({ ... provider.defaultValues, quality: 'auto' }, wholeStructure).run()
 
-            this.canvas3d.add(repr)
+            const objList1 = repr.renderObjects
+            console.log(objList1[0].type);
+
+            objList = repr.renderObjects
+            console.log(objList.length);
+            for (let i = 0; i < objList.length; i++) {
+                const currObj = objList[i]
+                console.log(currObj.type);
+                if (currObj.type === 'mesh') {
+
+                    buffer += 'o main_structure\n'
+
+                    fs.appendFileSync('objtest.obj', buffer)
+
+
+                    console.log('huh?');
+
+                    const vertices = currObj.values.aPosition.ref.value
+                    for (let i = 2; i < vertices.length; i += 3) {
+
+                        buffer = `v ${vertices[i - 2]} ${vertices[i - 1]} ${vertices[i]}\n`
+
+                        fs.appendFileSync('objtest.obj', buffer)
+                    }
+
+                    const norms = currObj.values.aNormal.ref.value
+                    for (let i = 2; i < norms.length; i += 3) {
+
+                        buffer = `vn ${norms[i - 2]} ${norms[i - 1]} ${norms[i]}\n`
+
+                        fs.appendFileSync('objtest.obj', buffer)
+
+                    }
+
+                    const faces = currObj.values.elements.ref.value
+                    for (let i = 2; i < faces.length; i += 3) {
+
+                        buffer = `f ${faces[i - 2] + 1} ${faces[i - 1] + 1} ${faces[i] + 1}\n`
+
+                        fs.appendFileSync('objtest.obj', buffer)
+
+                    }
+                }
+            }
 
             // Query and add ligands to canvas
             const expression = MS.struct.modifier.union([
@@ -265,18 +430,58 @@ export class ImageRenderer {
                 size: this.reprCtx.sizeThemeRegistry.create('uniform', { structure })
             })
             await ligandRepr.createOrUpdate({ ...BallAndStickRepresentationProvider.defaultValues, quality: 'auto' }, structure).run()
-            this.canvas3d.add(ligandRepr)
 
-            this.canvas3d.resetCamera()
+            objList = ligandRepr.renderObjects
+            console.log(objList.length);
+            for (let i = 0; i < objList.length; i++) {
+                const currObj = objList[i]
+                console.log(currObj.type);
+                if (currObj.type === 'mesh') {
 
-            // Write png to file
-            let imagePathName = `${outPath}/${id}_model-${models[modIndex].modelNum}-assembly-${asmName}.png`
-            await this.createImage(imagePathName)
+                    buffer += 'o ligand_structure\n'
+
+                    fs.appendFileSync('objtest.obj', buffer)
+
+
+                    console.log('huh?');
+
+                    const vertices = currObj.values.aPosition.ref.value
+                    for (let i = 2; i < vertices.length; i += 3) {
+
+                        buffer = `v ${vertices[i - 2]} ${vertices[i - 1]} ${vertices[i]}\n`
+
+                        fs.appendFileSync('objtest.obj', buffer)
+                    }
+
+                    const norms = currObj.values.aNormal.ref.value
+                    for (let i = 2; i < norms.length; i += 3) {
+
+                        buffer = `vn ${norms[i - 2]} ${norms[i - 1]} ${norms[i]}\n`
+
+                        fs.appendFileSync('objtest.obj', buffer)
+
+                    }
+
+                    const faces = currObj.values.elements.ref.value
+                    for (let i = 2; i < faces.length; i += 3) {
+
+                        buffer = `f ${faces[i - 2]} ${faces[i - 1]} ${faces[i]}\n`
+
+                        fs.appendFileSync('objtest.obj', buffer)
+
+                    }
+                }
+            }
+
+
+            // // Write png to file
+            // let imagePathName = `${outPath}/${id}_model-${models[modIndex].modelNum}-assembly-${asmName}.png`
+            // await this.createImage(imagePathName)
 
             // Finished writing to file and clear canvas
             console.log('Finished.')
-            this.canvas3d.remove(ligandRepr)
-            this.canvas3d.clear()
+            // this.canvas3d.remove(ligandRepr)
+            // this.canvas3d.clear()
             resolve()
         })
     }
