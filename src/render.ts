@@ -8,7 +8,6 @@
 import * as util from 'util'
 import createContext = require('gl')
 import fs = require('fs')
-import { promises } from 'fs'
 import { PNG, PNGOptions } from 'pngjs'
 import { Canvas3D, Canvas3DParams } from 'molstar/lib/mol-canvas3d/canvas3d';
 import InputObserver from 'molstar/lib/mol-util/input/input-observer';
@@ -304,28 +303,26 @@ export class ImageRenderer {
 
             let buffer = `# PDB ID Structure ${id}\n`
 
-            fs.writeFileSync('objtest.obj', buffer)
+            fs.writeFileSync(`/${outPath}/${id}.obj`, buffer)
 
             let objList = carbRepr.renderObjects
-            console.log(objList.length);
-            for (let i = 0; i < objList.length; i++) {
-                const currObj = objList[i]
-                console.log(currObj.type);
+            for (let index = 0; index < objList.length; index++) {
+                const currObj = objList[index]
                 if (currObj.type === 'mesh') {
 
-                    buffer += 'o carbohydrates\n'
+                    buffer += `o carbohydrates_${index + 1}\n`
 
-                    fs.appendFileSync('objtest.obj', buffer)
-
-
-                    console.log('huh?');
+                    fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
 
                     const vertices = currObj.values.aPosition.ref.value
                     for (let i = 2; i < vertices.length; i += 3) {
 
+                        if (vertices[i - 2] === vertices[i - 1] && vertices[i - 1] === vertices[i - 0] && vertices[i] === 0 && i > 2) {
+                            continue;
+                        }
                         buffer = `v ${vertices[i - 2]} ${vertices[i - 1]} ${vertices[i]}\n`
 
-                        fs.appendFileSync('objtest.obj', buffer)
+                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
                     }
 
                     const norms = currObj.values.aNormal.ref.value
@@ -333,16 +330,23 @@ export class ImageRenderer {
 
                         buffer = `vn ${norms[i - 2]} ${norms[i - 1]} ${norms[i]}\n`
 
-                        fs.appendFileSync('objtest.obj', buffer)
+                        if (norms[i - 2] === norms[i - 1] && norms[i - 1] === norms[i - 0] && norms[i] === 0 && i > 2) {
+                            continue;
+                        }
+
+                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
 
                     }
 
                     const faces = currObj.values.elements.ref.value
                     for (let i = 2; i < faces.length; i += 3) {
 
-                        buffer = `f ${faces[i - 2]} ${faces[i - 1]} ${faces[i]}\n`
+                        if (faces[i - 2] === faces[i - 1] && faces[i - 1] === faces[i - 0] && faces[i] === 0 && i > 2) {
+                            continue;
+                        }
+                        buffer = `f ${faces[i - 2] + 1} ${faces[i - 1] + 1} ${faces[i] + 1}\n`
 
-                        fs.appendFileSync('objtest.obj', buffer)
+                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
 
                     }
                 }
@@ -371,29 +375,24 @@ export class ImageRenderer {
             }
             await repr.createOrUpdate({ ... provider.defaultValues, quality: 'auto' }, wholeStructure).run()
 
-            const objList1 = repr.renderObjects
-            console.log(objList1[0].type);
-
             objList = repr.renderObjects
-            console.log(objList.length);
-            for (let i = 0; i < objList.length; i++) {
-                const currObj = objList[i]
-                console.log(currObj.type);
+            for (let index = 0; index < objList.length; index++) {
+                const currObj = objList[index]
                 if (currObj.type === 'mesh') {
 
-                    buffer += 'o main_structure\n'
+                    buffer += `o main_structure_${index + 1}\n`
 
-                    fs.appendFileSync('objtest.obj', buffer)
-
-
-                    console.log('huh?');
+                    fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
 
                     const vertices = currObj.values.aPosition.ref.value
                     for (let i = 2; i < vertices.length; i += 3) {
 
+                        if (vertices[i - 2] === vertices[i - 1] && vertices[i - 1] === vertices[i - 0] && vertices[i] === 0 && i > 2) {
+                            continue;
+                        }
                         buffer = `v ${vertices[i - 2]} ${vertices[i - 1]} ${vertices[i]}\n`
 
-                        fs.appendFileSync('objtest.obj', buffer)
+                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
                     }
 
                     const norms = currObj.values.aNormal.ref.value
@@ -401,16 +400,23 @@ export class ImageRenderer {
 
                         buffer = `vn ${norms[i - 2]} ${norms[i - 1]} ${norms[i]}\n`
 
-                        fs.appendFileSync('objtest.obj', buffer)
+                        if (norms[i - 2] === norms[i - 1] && norms[i - 1] === norms[i - 0] && norms[i] === 0 && i > 2) {
+                            continue;
+                        }
+
+                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
 
                     }
 
                     const faces = currObj.values.elements.ref.value
                     for (let i = 2; i < faces.length; i += 3) {
 
+                        if (faces[i - 2] === faces[i - 1] && faces[i - 1] === faces[i - 0] && faces[i] === 0 && i > 2) {
+                            continue;
+                        }
                         buffer = `f ${faces[i - 2] + 1} ${faces[i - 1] + 1} ${faces[i] + 1}\n`
 
-                        fs.appendFileSync('objtest.obj', buffer)
+                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
 
                     }
                 }
@@ -432,25 +438,23 @@ export class ImageRenderer {
             await ligandRepr.createOrUpdate({ ...BallAndStickRepresentationProvider.defaultValues, quality: 'auto' }, structure).run()
 
             objList = ligandRepr.renderObjects
-            console.log(objList.length);
-            for (let i = 0; i < objList.length; i++) {
-                const currObj = objList[i]
-                console.log(currObj.type);
+            for (let index = 0; index < objList.length; index++) {
+                const currObj = objList[index]
                 if (currObj.type === 'mesh') {
 
-                    buffer += 'o ligand_structure\n'
+                    buffer += `o ligands_${index + 1}\n`
 
-                    fs.appendFileSync('objtest.obj', buffer)
-
-
-                    console.log('huh?');
+                    fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
 
                     const vertices = currObj.values.aPosition.ref.value
                     for (let i = 2; i < vertices.length; i += 3) {
 
+                        if (vertices[i - 2] === vertices[i - 1] && vertices[i - 1] === vertices[i - 0] && vertices[i] === 0 && i > 2) {
+                            continue;
+                        }
                         buffer = `v ${vertices[i - 2]} ${vertices[i - 1]} ${vertices[i]}\n`
 
-                        fs.appendFileSync('objtest.obj', buffer)
+                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
                     }
 
                     const norms = currObj.values.aNormal.ref.value
@@ -458,16 +462,23 @@ export class ImageRenderer {
 
                         buffer = `vn ${norms[i - 2]} ${norms[i - 1]} ${norms[i]}\n`
 
-                        fs.appendFileSync('objtest.obj', buffer)
+                        if (norms[i - 2] === norms[i - 1] && norms[i - 1] === norms[i - 0] && norms[i] === 0 && i > 2) {
+                            continue;
+                        }
+
+                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
 
                     }
 
                     const faces = currObj.values.elements.ref.value
                     for (let i = 2; i < faces.length; i += 3) {
 
-                        buffer = `f ${faces[i - 2]} ${faces[i - 1]} ${faces[i]}\n`
+                        if (faces[i - 2] === faces[i - 1] && faces[i - 1] === faces[i - 0] && faces[i] === 0 && i > 2) {
+                            continue;
+                        }
+                        buffer = `f ${faces[i - 2] + 1} ${faces[i - 1] + 1} ${faces[i] + 1}\n`
 
-                        fs.appendFileSync('objtest.obj', buffer)
+                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
 
                     }
                 }
