@@ -8,6 +8,7 @@
 import * as util from 'util'
 import createContext = require('gl')
 import fs = require('fs')
+import { promises as fps } from 'fs'
 import { PNG, PNGOptions } from 'pngjs'
 import { Canvas3D, Canvas3DParams } from 'molstar/lib/mol-canvas3d/canvas3d';
 import InputObserver from 'molstar/lib/mol-util/input/input-observer';
@@ -280,6 +281,25 @@ export class ImageRenderer {
     //         resolve()
     //     })
     // }
+
+    async writeFilePromise(path: string, line: string) {
+        return new Promise<void>(async resolve => {
+            fs.writeFile(path, line, (err) => {
+                if (err) throw err;
+                resolve()
+            })
+        })
+    }
+
+    async appendFilePromise(path: string, line: string) {
+        return new Promise<void>(async resolve => {
+            fs.appendFile(path, line, (err) => {
+                if (err) throw err;
+                resolve()
+            })
+        })
+    }
+
     async renderAsm(modIndex: number, asmIndex: number, models: readonly Model[], outPath: string, id: string) {
         return new Promise<void>(async resolve => {
             const asmName = models[modIndex].symmetry.assemblies[asmIndex].id
@@ -303,7 +323,7 @@ export class ImageRenderer {
 
             let buffer = `# PDB ID Structure ${id}\n`
 
-            fs.writeFileSync(`/${outPath}/${id}.obj`, buffer)
+            await this.writeFilePromise(`./${outPath}/${id}.obj`, buffer)
 
             let objList = carbRepr.renderObjects
             for (let index = 0; index < objList.length; index++) {
@@ -312,7 +332,7 @@ export class ImageRenderer {
 
                     buffer += `o carbohydrates_${index + 1}\n`
 
-                    fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
+                    await this.appendFilePromise(`./${outPath}/${id}.obj`, buffer)
 
                     const vertices = currObj.values.aPosition.ref.value
                     for (let i = 2; i < vertices.length; i += 3) {
@@ -322,7 +342,8 @@ export class ImageRenderer {
                         }
                         buffer = `v ${vertices[i - 2]} ${vertices[i - 1]} ${vertices[i]}\n`
 
-                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
+                        await this.appendFilePromise(`./${outPath}/${id}.obj`, buffer)
+
                     }
 
                     const norms = currObj.values.aNormal.ref.value
@@ -334,7 +355,7 @@ export class ImageRenderer {
                             continue;
                         }
 
-                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
+                        await this.appendFilePromise(`./${outPath}/${id}.obj`, buffer)
 
                     }
 
@@ -346,7 +367,7 @@ export class ImageRenderer {
                         }
                         buffer = `f ${faces[i - 2] + 1} ${faces[i - 1] + 1} ${faces[i] + 1}\n`
 
-                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
+                        await this.appendFilePromise(`./${outPath}/${id}.obj`, buffer)
 
                     }
                 }
@@ -382,7 +403,7 @@ export class ImageRenderer {
 
                     buffer += `o main_structure_${index + 1}\n`
 
-                    fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
+                    await this.appendFilePromise(`./${outPath}/${id}.obj`, buffer)
 
                     const vertices = currObj.values.aPosition.ref.value
                     for (let i = 2; i < vertices.length; i += 3) {
@@ -392,7 +413,8 @@ export class ImageRenderer {
                         }
                         buffer = `v ${vertices[i - 2]} ${vertices[i - 1]} ${vertices[i]}\n`
 
-                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
+                        await this.appendFilePromise(`./${outPath}/${id}.obj`, buffer)
+
                     }
 
                     const norms = currObj.values.aNormal.ref.value
@@ -404,7 +426,7 @@ export class ImageRenderer {
                             continue;
                         }
 
-                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
+                        await this.appendFilePromise(`./${outPath}/${id}.obj`, buffer)
 
                     }
 
@@ -416,7 +438,7 @@ export class ImageRenderer {
                         }
                         buffer = `f ${faces[i - 2] + 1} ${faces[i - 1] + 1} ${faces[i] + 1}\n`
 
-                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
+                        await this.appendFilePromise(`./${outPath}/${id}.obj`, buffer)
 
                     }
                 }
@@ -444,7 +466,7 @@ export class ImageRenderer {
 
                     buffer += `o ligands_${index + 1}\n`
 
-                    fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
+                    await this.appendFilePromise(`./${outPath}/${id}.obj`, buffer)
 
                     const vertices = currObj.values.aPosition.ref.value
                     for (let i = 2; i < vertices.length; i += 3) {
@@ -454,7 +476,8 @@ export class ImageRenderer {
                         }
                         buffer = `v ${vertices[i - 2]} ${vertices[i - 1]} ${vertices[i]}\n`
 
-                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
+                        await this.appendFilePromise(`./${outPath}/${id}.obj`, buffer)
+
                     }
 
                     const norms = currObj.values.aNormal.ref.value
@@ -466,7 +489,7 @@ export class ImageRenderer {
                             continue;
                         }
 
-                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
+                        await this.appendFilePromise(`./${outPath}/${id}.obj`, buffer)
 
                     }
 
@@ -478,7 +501,7 @@ export class ImageRenderer {
                         }
                         buffer = `f ${faces[i - 2] + 1} ${faces[i - 1] + 1} ${faces[i] + 1}\n`
 
-                        fs.appendFileSync(`/${outPath}/${id}.obj`, buffer)
+                        await this.appendFilePromise(`./${outPath}/${id}.obj`, buffer)
 
                     }
                 }
